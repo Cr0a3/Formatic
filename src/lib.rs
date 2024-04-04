@@ -1,14 +1,8 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+//! Formatic
+//! A libary to create object files;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod error;
+pub mod object_builder;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use error::*;
+pub use object_builder::*;
