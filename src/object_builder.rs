@@ -158,13 +158,13 @@ impl ObjectBuilder {
 
             // get type
             match decl {
-                Decl::FunctionImport => {
+                Decl::DataImport => {
                     ids.insert(name.to_string(),
                             obj.add_symbol(Symbol {
                             name: name.as_bytes().into(),
                             value: 0,
                             size: 0,
-                            kind: SymbolKind::Text,
+                            kind: SymbolKind::Data,
                             scope: SymbolScope::Dynamic,
                             weak: false,
                             section: SymbolSection::Undefined,
@@ -173,13 +173,38 @@ impl ObjectBuilder {
                     );
                 }
 
-                Decl::DataImport => {
+                Decl::DataExport => {
+                    let dat_opt = self.sym.get(&name.clone());
+
+                    if dat_opt.is_none() {
+                        return Err( Box::from(ObjectError::DeclWithoutSymbol) );
+                    }
+
+                    let data = dat_opt.unwrap();
+
+                    let (section, offset) =
+                        obj.add_subsection(StandardSection::ReadOnlyData, name.as_bytes().into(), data, 16);
+                    let symbol = obj.add_symbol(Symbol {
+                        name: name.as_bytes().into(),
+                        value: offset,
+                        size: data.len() as u64,
+                        kind: SymbolKind::Text,
+                        scope: SymbolScope::Linkage,
+                        weak: false,
+                        section: SymbolSection::Section(section),
+                        flags: SymbolFlags::None,
+                    });
+
+                    funcs.insert(name.into(), ((section, offset), symbol) );
+                }
+
+                Decl::FunctionImport => {
                     ids.insert(name.to_string(),
                             obj.add_symbol(Symbol {
                             name: name.as_bytes().into(),
                             value: 0,
                             size: 0,
-                            kind: SymbolKind::Data,
+                            kind: SymbolKind::Text,
                             scope: SymbolScope::Dynamic,
                             weak: false,
                             section: SymbolSection::Undefined,

@@ -9,8 +9,8 @@ pub enum ObjectError {
 impl fmt::Display for ObjectError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let str = match self {
-            ObjectError::DeclWithoutSymbol => "",
-            ObjectError::UnknownFunction(n) => "",
+            ObjectError::DeclWithoutSymbol => "got decleration without symbol".to_string(),
+            ObjectError::UnknownFunction(n) => format!("unknown function {}", n),
         };
 
         write!(f, "{}", str)
