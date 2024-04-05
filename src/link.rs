@@ -1,5 +1,5 @@
 pub struct Link {
-    from: String,
-    to: String,
-    at: usize,
+    pub from: String,
+    pub to: String,
+    pub at: usize,
 }
