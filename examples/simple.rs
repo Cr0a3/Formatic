@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use formatic::{Arch, BinFormat, Decl, Endian, ObjectBuilder};
+use formatic::{Arch, BinFormat, Decl, Endian, Link, ObjectBuilder};
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = File::create("test.o")?;
@@ -22,6 +22,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         0x5D,                           // pop rbp
         0xC3,                           // ret
     ]);
+
+    obj.link( Link { from: "call".into(), to: "callme".into(), at: 9 } );
 
     obj.write(BinFormat::host(), Arch::host(), Endian::host(), file)?;
 

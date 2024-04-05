@@ -204,7 +204,7 @@ impl ObjectBuilder {
                         value: offset,
                         size: data.len() as u64,
                         kind: SymbolKind::Text,
-                        scope: SymbolScope::Compilation,
+                        scope: SymbolScope::Linkage,
                         weak: false,
                         section: SymbolSection::Section(section),
                         flags: SymbolFlags::None,
