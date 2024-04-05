@@ -6,10 +6,15 @@ void callme() {
     printf("called\n");
 }
 
+extern char** value;
+
 // Should output:
 // called
 // Hello World
-void main() {
+int main() {
     call();
-    printf("Hello World\n");
+
+    printf("%s", value);
+
+    return 0;
 }

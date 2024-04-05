@@ -1,6 +1,9 @@
 pub enum Decl {
-    FunctionImport,
-    FunctionExport,
-    DataImport,
-    DataExport,
+    Function(Scope),
+    Data(Scope),
+}
+
+pub enum Scope {
+    Import,
+    Export,
 }

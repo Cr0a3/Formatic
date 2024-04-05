@@ -1,15 +1,15 @@
-use std::fs::File;
-
-use formatic::{Arch, BinFormat, Decl, Endian, Link, ObjectBuilder};
+use formatic::{
+    Arch, BinFormat, Decl, Endian, Link, ObjectBuilder, Scope
+};
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::create("test.o")?;
-    let mut obj = ObjectBuilder::new();
+    let mut obj = ObjectBuilder::new("test.o");
 
     obj.decls(
         vec![
-            ("callme", Decl::FunctionImport),
-            ("call", Decl::FunctionExport)
+            ("callme", Decl::Function(Scope::Import)),
+            ("call", Decl::Function(Scope::Export)),
+            ("value", Decl::Data(Scope::Export)),
         ]
     );
 
@@ -23,9 +23,11 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         0xC3,                           // ret
     ]);
 
+    obj.define("value", b"Hello World".into());
+
     obj.link( Link { from: "call".into(), to: "callme".into(), at: 9 } );
 
-    obj.write(BinFormat::host(), Arch::host(), Endian::host(), file)?;
+    obj.write(BinFormat::host(), Arch::host(), Endian::host())?;
 
     Ok(())
 }

@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fs::File};
+use std::{collections::HashMap, fs::OpenOptions};
 
 use object::{write::{Relocation, SectionId, StandardSection, Symbol, SymbolId, SymbolSection}, RelocationEncoding, RelocationFlags, RelocationKind, SymbolFlags, SymbolKind, SymbolScope};
 
-use crate::{Decl, Link, ObjectError};
+use crate::{Decl, Link, ObjectError, Scope};
 
 /// Enum which specifies the binary format
 /// 
@@ -81,15 +81,19 @@ pub struct ObjectBuilder {
     decls: Vec<(String, Decl)>,
     sym: HashMap<String, Vec<u8>>,
     links: Vec<Link>,
+
+    outpath: String,
 }
 
 impl ObjectBuilder {
     //// Returns empty instance of self
-    pub fn new() -> Self {
+    pub fn new(path: &str) -> Self {
         Self {
             decls: vec![],
             sym: HashMap::new(),
             links: vec![],
+
+            outpath: path.into(),
         }
     }
 
@@ -122,10 +126,12 @@ impl ObjectBuilder {
     ///  * `format`   - specifes the binary format of the object file
     ///  * `arch`     - specifes the architecture of the object file
     ///  * `endian`   - specifes the endian of the object file
-    ///  * `file`     - the file to write all of that
     pub fn write(
-        &mut self, format: BinFormat, arch: Arch, endian: Endian, file: File
+        &mut self, format: BinFormat, arch: Arch, endian: Endian
     ) -> Result<(), Box<dyn std::error::Error>> {
+
+        let file = OpenOptions::new().create(true).write(true).open(self.outpath.clone().to_owned())?;
+
         let obj_format = match format {
             BinFormat::Elf => object::BinaryFormat::Elf,
             BinFormat::Coff => object::BinaryFormat::Coff,
@@ -149,6 +155,8 @@ impl ObjectBuilder {
 
         let mut obj = object::write::Object::new(obj_format, obj_arch, obj_endian);
 
+        obj.add_file_symbol(self.outpath.to_owned().into_bytes());
+
         let mut ids: HashMap<String, SymbolId> = HashMap::new();
         let mut funcs: HashMap<String, ((SectionId, u64), SymbolId)> = HashMap::new();
 
@@ -158,84 +166,92 @@ impl ObjectBuilder {
 
             // get type
             match decl {
-                Decl::DataImport => {
-                    ids.insert(name.to_string(),
-                            obj.add_symbol(Symbol {
-                            name: name.as_bytes().into(),
-                            value: 0,
-                            size: 0,
-                            kind: SymbolKind::Data,
-                            scope: SymbolScope::Dynamic,
-                            weak: false,
-                            section: SymbolSection::Undefined,
-                            flags: SymbolFlags::None,
-                            })
-                    );
-                }
+                Decl::Data(s) => {
+                    match s {
+                        Scope::Import => {
+                            ids.insert(name.to_string(),
+                                    obj.add_symbol(Symbol {
+                                    name: name.as_bytes().into(),
+                                    value: 0,
+                                    size: 0,
+                                    kind: SymbolKind::Data,
+                                    scope: SymbolScope::Dynamic,
+                                    weak: false,
+                                    section: SymbolSection::Undefined,
+                                    flags: SymbolFlags::None,
+                                    })
+                            ); 
+                        },
+                        Scope::Export => {
+                            let dat_opt = self.sym.get(&name.clone());
 
-                Decl::DataExport => {
-                    let dat_opt = self.sym.get(&name.clone());
-
-                    if dat_opt.is_none() {
-                        return Err( Box::from(ObjectError::DeclWithoutSymbol) );
+                            if dat_opt.is_none() {
+                                return Err( Box::from(ObjectError::DeclWithoutSymbol) );
+                            }
+        
+                            let data = dat_opt.unwrap();
+        
+                            let (section, offset) =
+                                obj.add_subsection(StandardSection::ReadOnlyData, name.as_bytes().into(), data, 16);
+                            let symbol = obj.add_symbol(Symbol {
+                                name: name.as_bytes().into(),
+                                value: offset,
+                                size: data.len() as u64,
+                                kind: SymbolKind::Text,
+                                scope: SymbolScope::Linkage,
+                                weak: false,
+                                section: SymbolSection::Section(section),
+                                flags: SymbolFlags::None,
+                            });
+        
+                            funcs.insert(name.into(), ((section, offset), symbol) );
+                        },
                     }
-
-                    let data = dat_opt.unwrap();
-
-                    let (section, offset) =
-                        obj.add_subsection(StandardSection::ReadOnlyData, name.as_bytes().into(), data, 16);
-                    let symbol = obj.add_symbol(Symbol {
-                        name: name.as_bytes().into(),
-                        value: offset,
-                        size: data.len() as u64,
-                        kind: SymbolKind::Text,
-                        scope: SymbolScope::Linkage,
-                        weak: false,
-                        section: SymbolSection::Section(section),
-                        flags: SymbolFlags::None,
-                    });
-
-                    funcs.insert(name.into(), ((section, offset), symbol) );
                 }
 
-                Decl::FunctionImport => {
-                    ids.insert(name.to_string(),
-                            obj.add_symbol(Symbol {
-                            name: name.as_bytes().into(),
-                            value: 0,
-                            size: 0,
-                            kind: SymbolKind::Text,
-                            scope: SymbolScope::Dynamic,
-                            weak: false,
-                            section: SymbolSection::Undefined,
-                            flags: SymbolFlags::None,
-                            })
-                    );
-                }
+                Decl::Function(s) => {
+                    match s {
+                        Scope::Import => {
+                            ids.insert(name.to_string(),
+                                    obj.add_symbol(Symbol {
+                                    name: name.as_bytes().into(),
+                                    value: 0,
+                                    size: 0,
+                                    kind: SymbolKind::Text,
+                                    scope: SymbolScope::Dynamic,
+                                    weak: false,
+                                    section: SymbolSection::Undefined,
+                                    flags: SymbolFlags::None,
+                                    })
+                            );
+                            
+                        },
+                        Scope::Export => {
+                            let dat_opt = self.sym.get(&name.clone());
 
-                Decl::FunctionExport => {
-                    let dat_opt = self.sym.get(&name.clone());
-
-                    if dat_opt.is_none() {
-                        return Err( Box::from(ObjectError::DeclWithoutSymbol) );
+                            if dat_opt.is_none() {
+                                return Err( Box::from(ObjectError::DeclWithoutSymbol) );
+                            }
+        
+                            let data = dat_opt.unwrap();
+        
+                            let (section, offset) =
+                                obj.add_subsection(StandardSection::Text, name.as_bytes().into(), data, 16);
+                            let symbol = obj.add_symbol(Symbol {
+                                name: name.as_bytes().into(),
+                                value: offset,
+                                size: data.len() as u64,
+                                kind: SymbolKind::Text,
+                                scope: SymbolScope::Linkage,
+                                weak: false,
+                                section: SymbolSection::Section(section),
+                                flags: SymbolFlags::None,
+                            });
+        
+                            funcs.insert(name.into(), ((section, offset), symbol) );
+                            
+                        },
                     }
-
-                    let data = dat_opt.unwrap();
-
-                    let (section, offset) =
-                        obj.add_subsection(StandardSection::Text, name.as_bytes().into(), data, 16);
-                    let symbol = obj.add_symbol(Symbol {
-                        name: name.as_bytes().into(),
-                        value: offset,
-                        size: data.len() as u64,
-                        kind: SymbolKind::Text,
-                        scope: SymbolScope::Linkage,
-                        weak: false,
-                        section: SymbolSection::Section(section),
-                        flags: SymbolFlags::None,
-                    });
-
-                    funcs.insert(name.into(), ((section, offset), symbol) );
                 }
             }
         }
