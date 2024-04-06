@@ -6,7 +6,7 @@ void callme() {
     printf("called\n");
 }
 
-extern char** value;
+extern char* value;
 
 // Should output:
 // called
@@ -14,7 +14,7 @@ extern char** value;
 int main() {
     call();
 
-    printf("%s", value);
+    printf(value);
 
     return 0;
 }

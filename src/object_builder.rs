@@ -201,7 +201,7 @@ impl ObjectBuilder {
                                 name: name.as_bytes().into(),
                                 value: offset,
                                 size: data.len() as u64,
-                                kind: SymbolKind::Text,
+                                kind: SymbolKind::Data,
                                 scope: scope,
                                 weak: false,
                                 section: SymbolSection::Section(section),
