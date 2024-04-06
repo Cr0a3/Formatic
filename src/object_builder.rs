@@ -182,7 +182,7 @@ impl ObjectBuilder {
                                     })
                             ); 
                         },
-                        Scope::Export => {
+                        _ => {
                             let dat_opt = self.sym.get(&name.clone());
 
                             if dat_opt.is_none() {
@@ -190,6 +190,10 @@ impl ObjectBuilder {
                             }
         
                             let data = dat_opt.unwrap();
+
+                            let scope;
+                            if s.to_owned() == Scope::Export { scope = SymbolScope::Linkage }
+                            else { scope = SymbolScope::Compilation }
         
                             let (section, offset) =
                                 obj.add_subsection(StandardSection::ReadOnlyData, name.as_bytes().into(), data, 16);
@@ -198,7 +202,7 @@ impl ObjectBuilder {
                                 value: offset,
                                 size: data.len() as u64,
                                 kind: SymbolKind::Text,
-                                scope: SymbolScope::Linkage,
+                                scope: scope,
                                 weak: false,
                                 section: SymbolSection::Section(section),
                                 flags: SymbolFlags::None,
@@ -226,13 +230,17 @@ impl ObjectBuilder {
                             );
                             
                         },
-                        Scope::Export => {
+                        _ => {
                             let dat_opt = self.sym.get(&name.clone());
 
                             if dat_opt.is_none() {
                                 return Err( Box::from(ObjectError::DeclWithoutSymbol) );
                             }
         
+                            let scope;
+                            if s.to_owned() == Scope::Export { scope = SymbolScope::Linkage }
+                            else { scope = SymbolScope::Compilation }
+
                             let data = dat_opt.unwrap();
         
                             let (section, offset) =
@@ -242,7 +250,7 @@ impl ObjectBuilder {
                                 value: offset,
                                 size: data.len() as u64,
                                 kind: SymbolKind::Text,
-                                scope: SymbolScope::Linkage,
+                                scope: scope,
                                 weak: false,
                                 section: SymbolSection::Section(section),
                                 flags: SymbolFlags::None,
