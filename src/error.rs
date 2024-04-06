@@ -4,6 +4,7 @@ use std::fmt;
 pub enum ObjectError {
     DeclWithoutSymbol,
     UnknownFunction(String),
+    UnknownTargetSymbol(String),
 }
 
 impl fmt::Display for ObjectError {
@@ -11,6 +12,7 @@ impl fmt::Display for ObjectError {
         let str = match self {
             ObjectError::DeclWithoutSymbol => "got decleration without symbol".to_string(),
             ObjectError::UnknownFunction(n) => format!("unknown function {}", n),
+            ObjectError::UnknownTargetSymbol(n) => format!("unknown target symbol {}", n),
         };
 
         write!(f, "{}", str)

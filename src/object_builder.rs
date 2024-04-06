@@ -275,13 +275,23 @@ impl ObjectBuilder {
 
             let id = func.0.0;
             let off = func.0.1;
-            let sym = func.1;
+
+            let mut sym = None;
+
+            if funcs.contains_key(&link.to) {
+                sym = Some( funcs.get(&link.to).unwrap().1 );
+            } else if ids.contains_key(&link.to) {
+                sym = Some( ids.get(&link.to).unwrap().to_owned() );
+            } else {
+                return Err( Box::from(ObjectError::UnknownTargetSymbol(link.to.to_owned())) );
+            }
+
 
             obj.add_relocation(
                 id, 
                 Relocation {
                     offset: off + link.at as u64,
-                    symbol: sym,
+                    symbol: sym.unwrap(),
                     addend: -4,
                     flags: RelocationFlags::Generic {
                         kind: RelocationKind::PltRelative,
