@@ -276,7 +276,7 @@ impl ObjectBuilder {
             let id = func.0.0;
             let off = func.0.1;
 
-            let mut sym = None;
+            let sym;
 
             if funcs.contains_key(&link.to) {
                 sym = Some( funcs.get(&link.to).unwrap().1 );
