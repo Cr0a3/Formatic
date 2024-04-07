@@ -1,11 +1,14 @@
 use std::{collections::HashMap, fs::OpenOptions};
 
-use object::{write::{Relocation, SectionId, StandardSection, Symbol, SymbolId, SymbolSection}, RelocationEncoding, RelocationFlags, RelocationKind, SymbolFlags, SymbolKind, SymbolScope};
+use object::{
+    write::{Relocation, SectionId, StandardSection, Symbol, SymbolId, SymbolSection},
+    RelocationEncoding, RelocationFlags, RelocationKind, SymbolFlags, SymbolKind, SymbolScope,
+};
 
 use crate::{Decl, Link, ObjectError, Scope};
 
 /// Enum which specifies the binary format
-/// 
+///
 /// E.g: Coff for Windows
 pub enum BinFormat {
     Elf,
@@ -15,7 +18,7 @@ pub enum BinFormat {
 
 impl BinFormat {
     /// Function which returns the native binary format
-    /// 
+    ///
     /// For any unknown os it returns elf
     pub fn host() -> BinFormat {
         if cfg!(target_os = "windows") {
@@ -24,7 +27,7 @@ impl BinFormat {
             BinFormat::Macho
         } else {
             BinFormat::Elf
-        }  
+        }
     }
 }
 
@@ -54,11 +57,13 @@ impl Arch {
             Arch::Wasm32
         } else if cfg!(target_arch = "wasm64") {
             Arch::Wasm32
-        } else { Arch::Unknown }
+        } else {
+            Arch::Unknown
+        }
     }
 }
 
-/// Enum which specifies the endiannes 
+/// Enum which specifies the endiannes
 pub enum Endian {
     Litte,
     Big,
@@ -72,7 +77,6 @@ impl Endian {
         } else {
             Endian::Litte
         }
-
     }
 }
 
@@ -121,16 +125,21 @@ impl ObjectBuilder {
     }
 
     /// Writes all internaly saved symbols etc. to a object file
-    /// 
+    ///
     /// Args:
     ///  * `format`   - specifes the binary format of the object file
     ///  * `arch`     - specifes the architecture of the object file
     ///  * `endian`   - specifes the endian of the object file
     pub fn write(
-        &mut self, format: BinFormat, arch: Arch, endian: Endian
+        &mut self,
+        format: BinFormat,
+        arch: Arch,
+        endian: Endian,
     ) -> Result<(), Box<dyn std::error::Error>> {
-
-        let file = OpenOptions::new().create(true).write(true).open(self.outpath.clone().to_owned())?;
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(self.outpath.clone().to_owned())?;
 
         let obj_format = match format {
             BinFormat::Elf => object::BinaryFormat::Elf,
@@ -166,101 +175,111 @@ impl ObjectBuilder {
 
             // get type
             match decl {
-                Decl::Data(s) => {
-                    match s {
-                        Scope::Import => {
-                            ids.insert(name.to_string(),
-                                    obj.add_symbol(Symbol {
-                                    name: name.as_bytes().into(),
-                                    value: 0,
-                                    size: 0,
-                                    kind: SymbolKind::Data,
-                                    scope: SymbolScope::Dynamic,
-                                    weak: false,
-                                    section: SymbolSection::Undefined,
-                                    flags: SymbolFlags::None,
-                                    })
-                            ); 
-                        },
-                        _ => {
-                            let dat_opt = self.sym.get(&name.clone());
-
-                            if dat_opt.is_none() {
-                                return Err( Box::from(ObjectError::DeclWithoutSymbol) );
-                            }
-        
-                            let data = dat_opt.unwrap();
-
-                            let scope;
-                            if s.to_owned() == Scope::Export { scope = SymbolScope::Linkage }
-                            else { scope = SymbolScope::Compilation }
-        
-                            let (section, offset) =
-                                obj.add_subsection(StandardSection::ReadOnlyData, name.as_bytes().into(), data, 16);
-                            let symbol = obj.add_symbol(Symbol {
+                Decl::Data(s) => match s {
+                    Scope::Import => {
+                        ids.insert(
+                            name.to_string(),
+                            obj.add_symbol(Symbol {
                                 name: name.as_bytes().into(),
-                                value: offset,
-                                size: data.len() as u64,
+                                value: 0,
+                                size: 0,
                                 kind: SymbolKind::Data,
-                                scope: scope,
+                                scope: SymbolScope::Dynamic,
                                 weak: false,
-                                section: SymbolSection::Section(section),
+                                section: SymbolSection::Undefined,
                                 flags: SymbolFlags::None,
-                            });
-        
-                            funcs.insert(name.into(), ((section, offset), symbol) );
-                        },
+                            }),
+                        );
                     }
-                }
+                    _ => {
+                        let dat_opt = self.sym.get(&name.clone());
 
-                Decl::Function(s) => {
-                    match s {
-                        Scope::Import => {
-                            ids.insert(name.to_string(),
-                                    obj.add_symbol(Symbol {
-                                    name: name.as_bytes().into(),
-                                    value: 0,
-                                    size: 0,
-                                    kind: SymbolKind::Text,
-                                    scope: SymbolScope::Dynamic,
-                                    weak: false,
-                                    section: SymbolSection::Undefined,
-                                    flags: SymbolFlags::None,
-                                    })
-                            );
-                            
-                        },
-                        _ => {
-                            let dat_opt = self.sym.get(&name.clone());
+                        if dat_opt.is_none() {
+                            return Err(Box::from(ObjectError::DeclWithoutSymbol));
+                        }
 
-                            if dat_opt.is_none() {
-                                return Err( Box::from(ObjectError::DeclWithoutSymbol) );
-                            }
-        
-                            let scope;
-                            if s.to_owned() == Scope::Export { scope = SymbolScope::Linkage }
-                            else { scope = SymbolScope::Compilation }
+                        let data = dat_opt.unwrap();
 
-                            let data = dat_opt.unwrap();
-        
-                            let (section, offset) =
-                                obj.add_subsection(StandardSection::Text, name.as_bytes().into(), data, 16);
-                            let symbol = obj.add_symbol(Symbol {
+                        let scope;
+                        if s.to_owned() == Scope::Export {
+                            scope = SymbolScope::Linkage
+                        } else {
+                            scope = SymbolScope::Compilation
+                        }
+
+                        let (section, offset) = obj.add_subsection(
+                            StandardSection::Data,
+                            name.as_bytes().into(),
+                            data,
+                            16,
+                        );
+                        let symbol = obj.add_symbol(Symbol {
+                            name: name.as_bytes().into(),
+                            value: offset,
+                            size: data.len() as u64,
+                            kind: SymbolKind::Data,
+                            scope: scope,
+                            weak: false,
+                            section: SymbolSection::Section(section),
+                            flags: SymbolFlags::None,
+                        });
+
+                        funcs.insert(name.into(), ((section, offset), symbol));
+                    }
+                },
+
+                Decl::Function(s) => match s {
+                    Scope::Import => {
+                        ids.insert(
+                            name.to_string(),
+                            obj.add_symbol(Symbol {
                                 name: name.as_bytes().into(),
-                                value: offset,
-                                size: data.len() as u64,
+                                value: 0,
+                                size: 0,
                                 kind: SymbolKind::Text,
-                                scope: scope,
+                                scope: SymbolScope::Dynamic,
                                 weak: false,
-                                section: SymbolSection::Section(section),
+                                section: SymbolSection::Undefined,
                                 flags: SymbolFlags::None,
-                            });
-        
-                            funcs.insert(name.into(), ((section, offset), symbol) );
-                            
-                        },
+                            }),
+                        );
                     }
-                }
+                    _ => {
+                        let dat_opt = self.sym.get(&name.clone());
+
+                        if dat_opt.is_none() {
+                            return Err(Box::from(ObjectError::DeclWithoutSymbol));
+                        }
+
+                        let scope;
+                        if s.to_owned() == Scope::Export {
+                            scope = SymbolScope::Linkage
+                        } else {
+                            scope = SymbolScope::Compilation
+                        }
+
+                        let data = dat_opt.unwrap();
+
+                        let (section, offset) = obj.add_subsection(
+                            StandardSection::Text,
+                            name.as_bytes().into(),
+                            data,
+                            16,
+                        );
+                        let symbol = obj.add_symbol(Symbol {
+                            name: name.as_bytes().into(),
+                            value: offset,
+                            size: data.len() as u64,
+                            kind: SymbolKind::Text,
+                            scope: scope,
+                            weak: false,
+                            section: SymbolSection::Section(section),
+                            flags: SymbolFlags::None,
+                        });
+
+                        funcs.insert(name.into(), ((section, offset), symbol));
+                    }
+                },
             }
         }
 
@@ -269,26 +288,29 @@ impl ObjectBuilder {
 
             let func_opt = funcs.get(&link.from);
             if func_opt.is_none() {
-                return Err( Box::from( ObjectError::UnknownFunction(link.from.to_owned()) ) );
+                return Err(Box::from(ObjectError::UnknownFunction(
+                    link.from.to_owned(),
+                )));
             }
             let func = func_opt.unwrap();
 
-            let id = func.0.0;
-            let off = func.0.1;
+            let id = func.0 .0;
+            let off = func.0 .1;
 
             let sym;
 
             if funcs.contains_key(&link.to) {
-                sym = Some( funcs.get(&link.to).unwrap().1 );
+                sym = Some(funcs.get(&link.to).unwrap().1);
             } else if ids.contains_key(&link.to) {
-                sym = Some( ids.get(&link.to).unwrap().to_owned() );
+                sym = Some(ids.get(&link.to).unwrap().to_owned());
             } else {
-                return Err( Box::from(ObjectError::UnknownTargetSymbol(link.to.to_owned())) );
+                return Err(Box::from(ObjectError::UnknownTargetSymbol(
+                    link.to.to_owned(),
+                )));
             }
 
-
             obj.add_relocation(
-                id, 
+                id,
                 Relocation {
                     offset: off + link.at as u64,
                     symbol: sym.unwrap(),
@@ -298,7 +320,7 @@ impl ObjectBuilder {
                         encoding: RelocationEncoding::X86Branch,
                         size: 32,
                     },
-                }
+                },
             )?;
         }
 
