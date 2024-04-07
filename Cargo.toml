@@ -2,6 +2,8 @@
 name = "formatic"
 description = "A Coff/Elf/Macho object file creator"
 keywords = ["object", "elf", "coff", "macho"]
+license = "MIT"
+author = "Cr0a3"
 version = "0.1.0"
 edition = "2021"
 
