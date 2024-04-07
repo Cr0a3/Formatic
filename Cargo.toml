@@ -9,4 +9,3 @@ edition = "2021"
 
 [dependencies]
 gimli = { version = "0.28.1", features = ["write"] }
-object = { version = "0.34.0", features = ["write"] }
