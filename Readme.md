@@ -2,6 +2,8 @@
 
 A libary for creating object files
 
+For fun and for learning the object libary 
+
 ## Example
 
 ```rust
