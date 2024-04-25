@@ -4,7 +4,7 @@ description = "A Coff/Elf/Macho object file creator"
 keywords = ["object", "elf", "coff", "macho"]
 license = "MIT"
 author = "Cr0a3"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

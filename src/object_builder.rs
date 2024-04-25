@@ -7,6 +7,7 @@ use object::{
 
 use crate::{Decl, Link, ObjectError, Scope};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 /// Enum which specifies the binary format
 ///
 /// E.g: Coff for Windows
@@ -31,6 +32,7 @@ impl BinFormat {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 /// Enum which specifies the architecture
 pub enum Arch {
     X86_64,
@@ -63,6 +65,7 @@ impl Arch {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 /// Enum which specifies the endiannes
 pub enum Endian {
     Litte,
@@ -80,6 +83,7 @@ impl Endian {
     }
 }
 
+#[derive(Debug, Clone)]
 /// A struct for building object files
 pub struct ObjectBuilder {
     decls: Vec<(String, Decl)>,
